@@ -14,6 +14,10 @@
 #include <cstdint>
 #include <stdexcept>
 
+#ifdef SEAL_USE_INTEL_HEXL
+#include "intel-hexl/intel-hexl.hpp"
+#endif
+
 namespace seal
 {
     namespace util
@@ -201,6 +205,14 @@ namespace seal
             }
 #endif
             const uint64_t modulus_value = modulus.value();
+
+#ifdef SEAL_USE_INTEL_HEXL
+            const uint64_t *op1 = reinterpret_cast<const uint64_t *>(&operand1[0]);
+            const uint64_t *op2 = reinterpret_cast<const uint64_t *>(&operand2[0]);
+            uint64_t *rs = reinterpret_cast<uint64_t *>(&result[0]);
+            intel::hexl::EltwiseAddMod(rs, op1, op2, coeff_count, modulus_value);
+#else
+
             SEAL_ITERATE(iter(operand1, operand2, result), coeff_count, [&](auto I) {
 #ifdef SEAL_DEBUG
                 if (get<0>(I) >= modulus_value)
@@ -215,6 +227,7 @@ namespace seal
                 std::uint64_t sum = get<0>(I) + get<1>(I);
                 get<2>(I) = SEAL_COND_SELECT(sum >= modulus_value, sum - modulus_value, sum);
             });
+#endif
         }
 
         inline void add_poly_coeffmod(

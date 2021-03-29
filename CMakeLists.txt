@@ -200,6 +200,21 @@ if(SEAL_USE_ZSTD)
     endif()
 endif()
 
+# [option] SEAL_USE_INTEL_HEXL
+set(SEAL_USE_INTEL_HEXL_OPTION_STR "Use Intel HEXL library")
+option(SEAL_USE_INTEL_HEXL ${SEAL_USE_INTEL_HEXL_OPTION_STR} OFF)
+if(SEAL_USE_INTEL_HEXL)
+    if(SEAL_BUILD_DEPS)
+        message(STATUS "Intel HEXL: download ...")
+        seal_fetch_thirdparty_content(ExternalIntelHEXL)
+    else()
+        find_package(IntelHEXL REQUIRED)
+        if (NOT TARGET intel_hexl)
+            FATAL_ERROR("Intel HEXL: not found")
+        endif()
+    endif()
+endif()
+
 ####################
 # SEAL C++ library #
 ####################
@@ -364,6 +379,21 @@ if(NOT BUILD_SHARED_LIBS)
         endif()
     endif()
 
+    if(SEAL_USE_INTEL_HEXL)
+        if(SEAL_BUILD_DEPS)
+            add_dependencies(seal intel_hexl)
+            target_include_directories(seal PUBLIC $<BUILD_INTERFACE:${intel_hexl_SOURCE_DIR}/intel-hexl/include>)
+            seal_combine_archives(seal intel_hexl)
+        else()
+            target_link_libraries(seal PRIVATE intel_hexl)
+            get_target_property(
+                INTEL_HEXL_INCLUDE_DIR
+                intel_hexl
+                INTERFACE_INCLUDE_DIRECTORIES)
+            target_include_directories(seal PUBLIC ${INTEL_HEXL_INCLUDE_DIR})
+        endif()
+    endif()
+
     # Set secure compile options if SEAL_SECURE_COMPILE_OPTIONS is ON; only supported on MSVC
     if(SEAL_SECURE_COMPILE_OPTIONS)
         seal_set_secure_compile_options(seal PUBLIC)
@@ -398,6 +428,11 @@ else()
         target_include_directories(seal_shared PRIVATE $<BUILD_INTERFACE:${zstd_SOURCE_DIR}/lib>)
         target_include_directories(seal_shared PRIVATE $<BUILD_INTERFACE:${zstd_SOURCE_DIR}/lib/common>)
         target_link_libraries(seal_shared PRIVATE ${zstd_static})
+    endif()
+
+    if(SEAL_USE_INTEL_HEXL)
+        target_include_directories(seal_shared PRIVATE $<BUILD_INTERFACE:${intel_hexl_SOURCE_DIR}/intel-hexl/include>)
+        target_link_libraries(seal_shared PRIVATE intel_hexl)
     endif()
 endif()
 
@@ -458,6 +493,9 @@ if(SEAL_BUILD_SEAL_C)
     endif()
     seal_set_language(sealc)
     seal_set_include_directories(sealc)
+    if (SEAL_USE_INTEL_HEXL)
+        target_include_directories(sealc PRIVATE $<BUILD_INTERFACE:${intel_hexl_SOURCE_DIR}/intel-hexl/include>)
+    endif()
 
     target_link_libraries(sealc PUBLIC seal)
 
@@ -509,6 +547,13 @@ export(
 if(SEAL_USE_MSGSL AND SEAL_BUILD_DEPS)
     install(
         DIRECTORY ${msgsl_SOURCE_DIR}/include/gsl
+        DESTINATION ${SEAL_INCLUDES_INSTALL_DIR})
+endif()
+
+# Install Intel HEXL header files if SEAL_BUILD_DEPS is ON
+if(SEAL_USE_INTEL_HEXL AND SEAL_BUILD_DEPS)
+    install(
+        DIRECTORY ${intel_hexl_SOURCE_DIR}/intel-hexl/include/intel-hexl
         DESTINATION ${SEAL_INCLUDES_INSTALL_DIR})
 endif()
 
