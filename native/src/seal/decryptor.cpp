@@ -101,7 +101,7 @@ namespace seal
         case scheme_type::ckks:
             ckks_decrypt(encrypted, destination, pool_);
             return;
-        
+
         case scheme_type::bgv:
             bgv_decrypt(encrypted, destination, pool_);
             return;
@@ -109,7 +109,7 @@ namespace seal
         default:
             throw invalid_argument("unsupported scheme");
         }
-       
+
     }
 
     void Decryptor::bfv_decrypt(const Ciphertext &encrypted, Plaintext &destination, MemoryPoolHandle pool)
@@ -212,7 +212,7 @@ namespace seal
         destination.resize(coeff_count);
 
         context_data.rns_tool()->decrypt_modt(tmp_dest_modq, destination.data(), pool);
-        
+
         //Fix the plaintext after mod-switch operations.
         uint64_t fix = 1;
         for(size_t i = context_data.chain_index(); i < first_context_data.chain_index(); i++)
@@ -224,10 +224,10 @@ namespace seal
         {
             multiply_poly_scalar_coeffmod(CoeffIter(destination.data()), coeff_count, fix, plain_modulus, CoeffIter(destination.data()));
         }
-       
+
         // How many non-zero coefficients do we really have in the result?
         size_t plain_coeff_count = get_significant_uint64_count_uint(destination.data(), coeff_count);
-       
+
         // Resize destination to appropriate size
         destination.resize(max(plain_coeff_count, size_t(1)));
     }
@@ -373,7 +373,9 @@ namespace seal
                         add_poly_coeffmod(get<5>(I), get<0>(I), coeff_count, get<3>(I), get<5>(I));
                     });
             }
-        } else {
+        }
+        else
+        {
             // put < (c_1 , c_2, ... , c_{count-1}) , (s,s^2,...,s^{count-1}) > mod q in destination
             // Now do the dot product of encrypted_copy and the secret key array using NTT.
             // The secret key powers are already NTT transformed.
